@@ -17,9 +17,11 @@ export default function Home() {
   const [excludeExportedLeads, setExcludeExportedLeads] = useState<boolean>(false); // Toggle to exclude exported leads
   const [includeWebsiteLink, setIncludeWebsiteLink] = useState<boolean>(false); // Toggle for Website Link
   const [message, setMessage] = useState<string>("");
-  const [results, setResults] = useState<any[]>([]);
+  const [results, setResults] = useState<any[]>([]); // Results to store API response
   const [isLoading, setIsLoading] = useState<boolean>(false); // To control loading state
   const [filterInMongo, setFilterInMongo] = useState<boolean>(false); // State for filterInMongo toggle
+  const [phoneCount, setPhoneCount] = useState<number>(0); // State for phone count
+  const [emailCount, setEmailCount] = useState<number>(0); // State for email count
 
   const handleSubmit = async () => {
     setMessage(""); // Reset message
@@ -55,7 +57,9 @@ export default function Home() {
 
       const data = await response.json();
       console.log("API Data:", data); // Log the data received from API
-      setResults(data); // Set results from the API response
+      setResults(data.results); // Set results from the API response
+      setPhoneCount(data.phoneCount); // Set phone count from API response
+      setEmailCount(data.emailCount); // Set email count from API response
       setMessage("Data fetched successfully!");
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -221,6 +225,13 @@ export default function Home() {
               {/* Label displaying the number of found documents */}
               <p className="text-white mb-4 text-xl">
                 Total documents found: {results.length}
+              </p>
+              {/* Display counts for phone and email */}
+              <p className="text-white mb-4 text-xl">
+                Documents with phone: {phoneCount}
+              </p>
+              <p className="text-white mb-4 text-xl">
+                Documents with email: {emailCount}
               </p>
 
               {/* Table to display results */}

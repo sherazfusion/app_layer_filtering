@@ -101,18 +101,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const results: Result[] = []; // Explicitly type results
     let count = 0;
+    let phoneCount = 0; // Count for documents with valid phone
+    let emailCount = 0; // Count for documents with valid email
+
     await cursor.forEach((doc: Document) => { // Explicitly type doc as Document
       if (!isFilteredOut(doc, negativeKeywords, positiveKeywords, filterInMongo)) {
         // Cast doc to Result type
         results.push(doc as Result);
         count++;
+
+        // Check if phone is valid (not equal to "0")
+        if (doc.phone !== "0") {
+          phoneCount++;
+        }
+
+        // Check if email is valid (not equal to "0")
+        if (doc.email !== "0") {
+          emailCount++;
+        }
       }
     });
 
     // Log the results count
     console.log(`Found ${count} documents after filtering`);
+    console.log(`Documents with valid phone: ${phoneCount}`);
+    console.log(`Documents with valid email: ${emailCount}`);
 
-    return res.status(200).json(results);
+    // Return the results along with the counts for valid phone and email
+    return res.status(200).json({ results, phoneCount, emailCount });
 
   } catch (error) {
     console.error("Error executing query:", error);

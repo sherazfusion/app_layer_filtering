@@ -32,6 +32,7 @@ interface Filters {
   includePrivateAccounts: boolean;
   excludeExportedLeads: boolean;
   includeWebsiteLink: boolean;
+  filterInMongo: boolean; // New flag to check if MongoDB filtering should be used
 }
 
 // Reuse MongoDB Connection (Prevents Cold Starts)
@@ -67,6 +68,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     includePrivateAccounts: false,
     excludeExportedLeads: false,
     includeWebsiteLink: false,
+    filterInMongo: false, // Default to false to use Node.js filtering
   };
 
   // Check if the filters are empty and assign default values
@@ -76,7 +78,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     positiveKeywords, negativeKeywords,
     includeProfilePicture, includeBio, email,
     excludeSexualContent, includePrivateAccounts,
-    excludeExportedLeads, includeWebsiteLink
+    excludeExportedLeads, includeWebsiteLink, filterInMongo
   } = appliedFilters;
 
   // Log the received filters
@@ -91,7 +93,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Log pipeline creation
     console.log("Creating aggregation pipeline...");
     const pipeline = getMongoPipeline(
-      positiveKeywords, negativeKeywords, appliedFilters
+      positiveKeywords, negativeKeywords, appliedFilters, filterInMongo
     );
     console.log("Pipeline:", JSON.stringify(pipeline, null, 2));
 
@@ -100,7 +102,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const results: Result[] = []; // Explicitly type results
     let count = 0;
     await cursor.forEach((doc: Document) => { // Explicitly type doc as Document
-      if (!isFilteredOut(doc, negativeKeywords, positiveKeywords)) {
+      if (!isFilteredOut(doc, negativeKeywords, positiveKeywords, filterInMongo)) {
         // Cast doc to Result type
         results.push(doc as Result);
         count++;
@@ -119,7 +121,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 }
 
 // MongoDB `$search` Pipeline (Filters in MongoDB)
-function getMongoPipeline(positiveKeywords: string[], negativeKeywords: string[], filters: Filters) {
+function getMongoPipeline(positiveKeywords: string[], negativeKeywords: string[], filters: Filters, filterInMongo: boolean) {
   console.log("Building MongoDB aggregation pipeline with filters:", filters);
 
   const matchStage: any = {
@@ -165,26 +167,38 @@ function getMongoPipeline(positiveKeywords: string[], negativeKeywords: string[]
     matchStage.userEmail = { $nin: [filters.email] }; // Exclude leads with matching userEmail
   }
 
-  return [
-    {
-      $search: {
-        index: "default",
-        compound: {
-          should: positiveKeywords.map((word) => ({
-            text: { query: word, path: ["desc", "login", "name"] },
-          })),
-          mustNot: negativeKeywords.map((word) => ({
-            text: { query: word, path: ["desc", "login", "name"] },
-          })),
-        },
-      },
-    },
+  let pipeline = [
     {
       $match: matchStage,
     },
     { $limit: 1000 },
     { $project: getProjectionFields() }, // Project only required fields
   ];
+
+  if (filterInMongo) {
+    console.log("🔍 Using MongoDB Atlas Search Filtering...");
+    pipeline = [
+      {
+        // @ts-ignore
+        $search: {
+          index: "default",
+          compound: {
+            should: positiveKeywords.map((word) => ({
+              text: { query: word, path: ["desc", "login", "name"] },
+            })),
+            mustNot: negativeKeywords.map((word) => ({
+              text: { query: word, path: ["desc", "login", "name"] },
+            })),
+          },
+        },
+      },
+      ...pipeline, // Append the match, limit, and projection stages to the pipeline
+    ];
+  } else {
+    console.log("💻 Using Application-Level Filtering");
+  }
+
+  return pipeline;
 }
 
 // 🔎 Fields to Retrieve (Only include necessary fields)
@@ -202,7 +216,7 @@ function getProjectionFields() {
 }
 
 // ❌ Node.js Filtering (Used if MongoDB `$search` is disabled)
-function isFilteredOut(doc: Document, negativeKeywords: string[], positiveKeywords: string[]) {
+function isFilteredOut(doc: Document, negativeKeywords: string[], positiveKeywords: string[], filterInMongo: boolean) {
   const fieldsToCheck = [doc.desc, doc.login, doc.name];
 
   // Exclude if any field matches a negative keyword

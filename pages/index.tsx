@@ -18,9 +18,12 @@ export default function Home() {
   const [includeWebsiteLink, setIncludeWebsiteLink] = useState<boolean>(false); // Toggle for Website Link
   const [message, setMessage] = useState<string>("");
   const [results, setResults] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(false); // To control loading state
+  const [filterInMongo, setFilterInMongo] = useState<boolean>(false); // State for filterInMongo toggle
 
   const handleSubmit = async () => {
     setMessage(""); // Reset message
+    setIsLoading(true); // Disable submit button and show "Searching..." message
     const filters: any = {
       positiveKeywords: positiveKeywords.split(",").map((kw) => kw.trim()), // Convert to array
       negativeKeywords: negativeKeywords.split(",").map((kw) => kw.trim()), // Convert to array
@@ -31,6 +34,7 @@ export default function Home() {
       includePrivateAccounts,
       excludeExportedLeads,
       includeWebsiteLink,
+      filterInMongo, // Include filterInMongo value
     };
 
     // Conditionally add filters if they have values
@@ -56,8 +60,13 @@ export default function Home() {
     } catch (error) {
       console.error("Error fetching data:", error);
       setMessage("Error fetching data.");
+    } finally {
+      setIsLoading(false); // Re-enable the submit button after the request is complete
     }
   };
+
+  // Validate if both positive and negative keywords are entered
+  const isSubmitDisabled = !positiveKeywords.trim() || !negativeKeywords.trim();
 
   return (
     <main className={`flex min-h-screen p-24 ${inter.className}`}>
@@ -65,13 +74,25 @@ export default function Home() {
         {/* Left Section: Filters */}
         <div className="w-1/3 p-4">
           <div className="flex flex-col gap-4">
-             {/* New fields for positive and negative keywords */}
-             <input
+            {/* Toggle for filterInMongo */}
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={filterInMongo}
+                onChange={() => setFilterInMongo(!filterInMongo)}
+                className="h-5 w-5"
+              />
+              {filterInMongo ? 'DB Search Query' : 'Application Layer'}
+            </label>
+
+            {/* New fields for positive and negative keywords */}
+            <input
               type="text"
               placeholder="Positive Keywords (comma separated)"
               value={positiveKeywords}
               onChange={(e) => setPositiveKeywords(e.target.value)}
               className="border p-2 rounded-md"
+              required
             />
             <input
               type="text"
@@ -79,6 +100,7 @@ export default function Home() {
               value={negativeKeywords}
               onChange={(e) => setNegativeKeywords(e.target.value)}
               className="border p-2 rounded-md"
+              required
             />
 
             {/* New fields for Email */}
@@ -180,9 +202,10 @@ export default function Home() {
 
             <button
               onClick={handleSubmit}
-              className="bg-blue-500 text-white p-2 rounded-md"
+              className={`bg-blue-500 text-white p-2 rounded-md ${isSubmitDisabled || isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+              disabled={isSubmitDisabled || isLoading} // Disable button if keywords are missing or loading
             >
-              Submit
+              {isLoading ? "Searching..." : "Submit"} {/* Show "Searching..." during request */}
             </button>
           </div>
 
@@ -195,7 +218,7 @@ export default function Home() {
           {results.length > 0 && (
             <div>
               {/* Label displaying the number of found documents */}
-              <p className="text-white mb-4 text-xl">
+              <p className="text-white mb-4 text-xl" >
                 Total documents found: {results.length}
               </p>
 

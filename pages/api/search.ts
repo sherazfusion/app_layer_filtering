@@ -6,31 +6,6 @@ const MONGO_URI = "mongodb+srv://sheraz:kM5pxYRQnoVLtyBd@staging-0.whl0dtn.mongo
 const DATABASE_NAME = "test";
 const COLLECTION_NAME = "RawLeads";
 
-// Hardcoded Keywords (Positive and Negative)
-const positiveKeywords = ["food", "junks", "pizza", "meal", "eat"];
-const negativeKeywords = [
-  "onlyfans",
-  "18+",
-  "adult",
-  "nude",
-  "sex",
-  "porn",
-  "sexual",
-  "exclusive content",
-  "erotica",
-  "XXX",
-  "fetish",
-  "BDSM",
-  "camgirl",
-  "webcam",
-  "erotic",
-  "sexy",
-  "intimate",
-];
-
-const negativeKeywordsRegex = new RegExp(negativeKeywords.join("|"), "i");
-const positiveKeywordsRegex = new RegExp(positiveKeywords.join("|"), "i");
-
 // Define the type for each document in the results
 interface Result {
   name: string;
@@ -45,9 +20,18 @@ interface Result {
 
 // Define the type for filters
 interface Filters {
-  minFollowers: number;
-  maxFollowers: number;
-  minPosts: number;
+  minFollowers: number | undefined;
+  maxFollowers: number | undefined;
+  minPosts: number | undefined;
+  positiveKeywords: string[]; // Now accepting positive keywords as an array
+  negativeKeywords: string[]; // Now accepting negative keywords as an array
+  includeProfilePicture: boolean;
+  includeBio: boolean;
+  email: string;
+  excludeSexualContent: boolean;
+  includePrivateAccounts: boolean;
+  excludeExportedLeads: boolean;
+  includeWebsiteLink: boolean;
 }
 
 // Reuse MongoDB Connection (Prevents Cold Starts)
@@ -70,11 +54,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const { filters } = req.query;
 
   // Default filters if not passed
-  const defaultFilters: Filters = { minFollowers: 0, maxFollowers: 40000, minPosts: 5 };
+  const defaultFilters: Filters = {
+    minFollowers: undefined, // Use undefined instead of 0 for conditional filtering
+    maxFollowers: undefined, // Use undefined instead of 40000 for conditional filtering
+    minPosts: undefined, // Use undefined instead of 5 for conditional filtering
+    positiveKeywords: [],
+    negativeKeywords: [],
+    includeProfilePicture: false,
+    includeBio: false,
+    email: "",
+    excludeSexualContent: false,
+    includePrivateAccounts: false,
+    excludeExportedLeads: false,
+    includeWebsiteLink: false,
+  };
 
   // Check if the filters are empty and assign default values
   const appliedFilters: Filters = filters ? JSON.parse(filters as string) : defaultFilters;
-  const { minFollowers, maxFollowers, minPosts } = appliedFilters;
+  const {
+    minFollowers, maxFollowers, minPosts, 
+    positiveKeywords, negativeKeywords,
+    includeProfilePicture, includeBio, email,
+    excludeSexualContent, includePrivateAccounts,
+    excludeExportedLeads, includeWebsiteLink
+  } = appliedFilters;
 
   // Log the received filters
   console.log("Received filters:", appliedFilters);
@@ -87,7 +90,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Log pipeline creation
     console.log("Creating aggregation pipeline...");
-    const pipeline = getMongoPipeline(appliedFilters);
+    const pipeline = getMongoPipeline(
+      positiveKeywords, negativeKeywords, appliedFilters
+    );
     console.log("Pipeline:", JSON.stringify(pipeline, null, 2));
 
     const cursor = collection.aggregate(pipeline);
@@ -95,7 +100,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const results: Result[] = []; // Explicitly type results
     let count = 0;
     await cursor.forEach((doc: Document) => { // Explicitly type doc as Document
-      if (!isFilteredOut(doc)) {
+      if (!isFilteredOut(doc, negativeKeywords, positiveKeywords)) {
         // Cast doc to Result type
         results.push(doc as Result);
         count++;
@@ -114,8 +119,52 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 }
 
 // MongoDB `$search` Pipeline (Filters in MongoDB)
-function getMongoPipeline(filters: Filters) {
+function getMongoPipeline(positiveKeywords: string[], negativeKeywords: string[], filters: Filters) {
   console.log("Building MongoDB aggregation pipeline with filters:", filters);
+
+  const matchStage: any = {
+    avatar: { $ne: "0" },
+    desc: { $ne: "0" },
+    privacy: { $ne: "private" },
+    userEmail: { $nin: [filters.email] }, // Exclude the email passed from frontend
+  };
+
+  // Conditionally add the filters if they are provided
+  if (filters.minFollowers !== undefined) {
+    matchStage.fol_cnt = { $gte: filters.minFollowers };
+  }
+  if (filters.maxFollowers !== undefined) {
+    matchStage.fol_cnt = { ...matchStage.fol_cnt, $lte: filters.maxFollowers };
+  }
+  if (filters.minPosts !== undefined) {
+    matchStage.post_cnt = { $gte: filters.minPosts };
+  }
+
+  // Conditionally add the check for profile picture if the filter is true
+  if (filters.includeProfilePicture) {
+    matchStage.avatar = { $ne: "0" }; // Exclude documents where avatar is "0"
+  }
+
+  // Conditionally add the check for bio if the filter is true
+  if (filters.includeBio) {
+    matchStage.desc = { $ne: "0" }; // Exclude documents where desc is "0"
+  }
+
+  // Conditionally add the check for website link if the filter is true
+  if (filters.includeWebsiteLink) {
+    matchStage.link = { $ne: "0" }; // Exclude documents where link is "0"
+  }
+
+  // Conditionally add the check for private accounts if the filter is false
+  if (filters.includePrivateAccounts === false) {
+    matchStage.privacy = { $ne: "private" }; // Exclude private accounts
+  }
+
+  // Conditionally add the check for excluding exported leads if the filter is true
+  if (filters.excludeExportedLeads && filters.email) {
+    matchStage.userEmail = { $nin: [filters.email] }; // Exclude leads with matching userEmail
+  }
+
   return [
     {
       $search: {
@@ -131,16 +180,9 @@ function getMongoPipeline(filters: Filters) {
       },
     },
     {
-      $match: {
-        avatar: { $ne: "0" },
-        desc: { $ne: "0" },
-        privacy: { $ne: "private" },
-        userEmail: { $nin: ["dara.omotola@yahoo.com"] },
-        fol_cnt: { $gte: filters.minFollowers, $lte: filters.maxFollowers },
-        post_cnt: { $gte: filters.minPosts },
-      },
+      $match: matchStage,
     },
-    { $limit: 1000 }, 
+    { $limit: 1000 },
     { $project: getProjectionFields() }, // Project only required fields
   ];
 }
@@ -160,15 +202,17 @@ function getProjectionFields() {
 }
 
 // ❌ Node.js Filtering (Used if MongoDB `$search` is disabled)
-function isFilteredOut(doc: Document) {
+function isFilteredOut(doc: Document, negativeKeywords: string[], positiveKeywords: string[]) {
   const fieldsToCheck = [doc.desc, doc.login, doc.name];
 
   // Exclude if any field matches a negative keyword
+  const negativeKeywordsRegex = new RegExp(negativeKeywords.join("|"), "i");
   if (fieldsToCheck.some((field) => negativeKeywordsRegex.test(field))) {
     return true;
   }
 
   // Include only if at least one field matches a positive keyword
+  const positiveKeywordsRegex = new RegExp(positiveKeywords.join("|"), "i");
   if (!fieldsToCheck.some((field) => positiveKeywordsRegex.test(field))) {
     return true; // Filter out if no positive keyword found
   }

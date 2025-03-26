@@ -70,12 +70,12 @@ export default function Home() {
 
   return (
     <main className={`flex min-h-screen p-24 ${inter.className}`}>
-      <div className="flex w-full">
-        {/* Left Section: Filters */}
-        <div className="w-1/3 p-4">
+      <div className="flex flex-col w-full">
+        {/* Filters Section */}
+        <div className="w-full p-4 bg-gray-800 rounded-md mb-8">
           <div className="flex flex-col gap-4">
             {/* Toggle for filterInMongo */}
-            <label className="flex items-center gap-2">
+            <label className="flex items-center gap-2 text-white">
               <input
                 type="checkbox"
                 checked={filterInMongo}
@@ -113,7 +113,7 @@ export default function Home() {
             />
 
             {/* Toggle for Website Link */}
-            <label className="flex items-center gap-2">
+            <label className="flex items-center gap-2 text-white">
               <input
                 type="checkbox"
                 checked={includeWebsiteLink}
@@ -124,7 +124,7 @@ export default function Home() {
             </label>
 
             {/* Toggle for Profile Picture */}
-            <label className="flex items-center gap-2">
+            <label className="flex items-center gap-2 text-white">
               <input
                 type="checkbox"
                 checked={includeProfilePicture}
@@ -135,7 +135,7 @@ export default function Home() {
             </label>
 
             {/* Toggle for Bio */}
-            <label className="flex items-center gap-2 ">
+            <label className="flex items-center gap-2 text-white">
               <input
                 type="checkbox"
                 checked={includeBio}
@@ -146,7 +146,7 @@ export default function Home() {
             </label>
 
             {/* Toggle for Exclude Sexual Content */}
-            <label className="flex items-center gap-2">
+            <label className="flex items-center gap-2 text-white">
               <input
                 type="checkbox"
                 checked={excludeSexualContent}
@@ -157,7 +157,7 @@ export default function Home() {
             </label>
 
             {/* Toggle for Include Private Accounts */}
-            <label className="flex items-center gap-2">
+            <label className="flex items-center gap-2 text-white">
               <input
                 type="checkbox"
                 checked={includePrivateAccounts}
@@ -168,7 +168,7 @@ export default function Home() {
             </label>
 
             {/* Toggle for Exclude Already Exported Leads */}
-            <label className="flex items-center gap-2">
+            <label className="flex items-center gap-2 text-white">
               <input
                 type="checkbox"
                 checked={excludeExportedLeads}
@@ -178,6 +178,7 @@ export default function Home() {
               Exclude Already Exported Leads (userEmail)
             </label>
 
+            {/* Number fields for followers and posts */}
             <input
               type="number"
               placeholder="Minimum Followers"
@@ -210,15 +211,15 @@ export default function Home() {
           </div>
 
           {/* Display Message */}
-          {message && <p className="text-xl mt-4">{message}</p>}
+          {message && <p className="text-xl mt-4 text-white">{message}</p>}
         </div>
 
-        {/* Right Section: Display Results */}
-        <div className="w-2/3 p-4">
+        {/* Results Section (Table) */}
+        <div className="w-full p-4 bg-gray-800 rounded-md overflow-x-auto">
           {results.length > 0 && (
             <div>
               {/* Label displaying the number of found documents */}
-              <p className="text-white mb-4 text-xl" >
+              <p className="text-white mb-4 text-xl">
                 Total documents found: {results.length}
               </p>
 
@@ -237,8 +238,8 @@ export default function Home() {
                   </tr>
                 </thead>
                 <tbody>
-                  {results.map((result, index) => (
-                    <tr key={index} className="bg-gray-800">
+                {results.slice(0, 20).map((result, index) => (
+                    <tr key={index} className="bg-gray-900">
                       <td className="border px-4 py-2">{result.name}</td>
                       <td className="border px-4 py-2">{result.desc}</td>
                       <td className="border px-4 py-2">{result.email}</td>

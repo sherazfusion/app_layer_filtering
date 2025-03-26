@@ -2,8 +2,8 @@ import { MongoClient, Document } from "mongodb";
 import type { NextApiRequest, NextApiResponse } from "next"; // Import types
 
 // MongoDB Configuration
-const MONGO_URI = process.env.MONGODB_URI || "your-mongo-connection-string";
-const DATABASE_NAME = "RawLeads";
+const MONGO_URI = "mongodb+srv://sheraz:kM5pxYRQnoVLtyBd@staging-0.whl0dtn.mongodb.net/?retryWrites=true&w=majority&appName=staging-0";
+const DATABASE_NAME = "test";
 const COLLECTION_NAME = "RawLeads";
 
 // Hardcoded Keywords (Positive and Negative)
@@ -140,7 +140,7 @@ function getMongoPipeline(filters: Filters) {
         post_cnt: { $gte: filters.minPosts },
       },
     },
-    { $limit: 20 }, // Limit to the first 20 documents
+    { $limit: 1000 }, 
     { $project: getProjectionFields() }, // Project only required fields
   ];
 }

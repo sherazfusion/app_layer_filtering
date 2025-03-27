@@ -93,7 +93,7 @@ export default function Home() {
                 onChange={() => setFilterInMongo(!filterInMongo)}
                 className="h-5 w-5"
               />
-              {filterInMongo ? 'DB Search Query' : 'Application Layer'}
+              {filterInMongo ? 'DB Search Query ( Limit is 100k)' : 'Application Layer ( Limit is 50K)'}
             </label>
 
             {/* New fields for positive and negative keywords */}

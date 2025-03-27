@@ -1,5 +1,5 @@
 import { MongoClient, Document } from "mongodb";
-import type { NextApiRequest, NextApiResponse } from "next"; // Import types
+import type { NextApiRequest, NextApiResponse } from "next";
 
 // MongoDB Configuration
 const MONGO_URI = "mongodb+srv://sheraz:kM5pxYRQnoVLtyBd@staging-0.whl0dtn.mongodb.net/?retryWrites=true&w=majority&appName=staging-0";
@@ -84,6 +84,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // Log the received filters
   console.log("Received filters:", appliedFilters);
 
+  // Handle optional negativeKeywords and add predefined negative keywords if excludeSexualContent is true
+  let updatedNegativeKeywords = negativeKeywords ? [...negativeKeywords] : [];
+  
+  if (excludeSexualContent) {
+    // List of sexual content-related keywords
+    const sexualKeywords = [
+     "onlyfans", "18+", "adult", "nude", "sex", "porn", "sexual", "exclusive content", "penis", "vagina",
+    "erotica", "XXX", "fetish", "BDSM", "camgirl", "webcam", "erotic", "sexy", "intimate", "pornography",
+    "striptease", "adult content", "explicit", "lust", "orgasm", "masturbation", "erotic videos", "nude photos",
+    "sex tapes", "amateur porn", "professional porn", "kink", "adult entertainment", "sex chat", "sexual videos",
+    "sexual photos", "pornographic", "sexy pictures", "sex stories", "porn stars", "sex workers", "escort",
+    "dirty talk", "seductive", "sensual", "adult film", "lewd", "provocative", "smut", "bare", "naked",
+    "intimate moments", "dirty pictures", "sex acts"
+    ];
+    updatedNegativeKeywords = [...updatedNegativeKeywords, ...sexualKeywords];
+  }
+
   // MongoDB Client
   try {
     const client = await getMongoClient();
@@ -93,7 +110,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Log pipeline creation
     console.log("Creating aggregation pipeline...");
     const pipeline = getMongoPipeline(
-      positiveKeywords, negativeKeywords, appliedFilters, filterInMongo
+      positiveKeywords, updatedNegativeKeywords, appliedFilters, filterInMongo
     );
     console.log("Pipeline:", JSON.stringify(pipeline, null, 2));
 
@@ -105,7 +122,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let emailCount = 0; // Count for documents with valid email
 
     await cursor.forEach((doc: Document) => { // Explicitly type doc as Document
-      if (!isFilteredOut(doc, negativeKeywords, positiveKeywords, filterInMongo)) {
+      if (!isFilteredOut(doc, updatedNegativeKeywords, positiveKeywords, filterInMongo)) {
         // Cast doc to Result type
         results.push(doc as Result);
         count++;

@@ -22,6 +22,7 @@ export default function Home() {
   const [filterInMongo, setFilterInMongo] = useState<boolean>(false); // State for filterInMongo toggle
   const [phoneCount, setPhoneCount] = useState<number>(0); // State for phone count
   const [emailCount, setEmailCount] = useState<number>(0); // State for email count
+  const [responseTime, setResponseTime] = useState<string>(""); 
 
   const handleSubmit = async () => {
     setMessage(""); // Reset message
@@ -44,6 +45,8 @@ export default function Home() {
     if (maximumFollowers) filters.maxFollowers = Number(maximumFollowers);
     if (minimumPosts) filters.minPosts = Number(minimumPosts);
 
+    const startTime = new Date().getTime();
+    
     try {
       console.log("Sending request to API with filters:", filters);
       const response = await fetch(`/api/search?filters=${JSON.stringify(filters)}`);
@@ -54,6 +57,10 @@ export default function Home() {
         setMessage("Failed to fetch data.");
         return;
       }
+
+      const endTime = new Date().getTime(); // End time in milliseconds
+      const timeTaken = (endTime - startTime) / 60000; // Convert milliseconds to minutes
+      setResponseTime(timeTaken.toFixed(2)); // Save response time (2 decimal places)
 
       const data = await response.json();
       console.log("API Data:", data); // Log the data received from API
@@ -225,6 +232,10 @@ export default function Home() {
               {/* Label displaying the number of found documents */}
               <p className="text-white mb-4 text-xl">
                 Total documents found: {results.length}
+              </p>
+               {/* Display execution time */}
+              <p className="text-white mb-4 text-xl">
+                Time taken: {responseTime} minutes
               </p>
               {/* Display counts for phone and email */}
               <p className="text-white mb-4 text-xl">

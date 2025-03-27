@@ -204,7 +204,7 @@ function getMongoPipeline(positiveKeywords: string[], negativeKeywords: string[]
     {
       $match: matchStage,
     },
-    { $limit: 1000 },
+    { $limit: 50000 },
     { $project: getProjectionFields() }, // Project only required fields
   ];
 

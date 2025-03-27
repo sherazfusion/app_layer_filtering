@@ -205,7 +205,7 @@ function getMongoPipeline(positiveKeywords: string[], negativeKeywords: string[]
       $match: matchStage,
     },
     // Dynamically set the limit based on filterInMongo value
-    { $limit: filterInMongo ? 50000 : 100000 },
+    { $limit: filterInMongo ? 30000 : 50000 },
     { $project: getProjectionFields() }, // Project only required fields
   ];
 

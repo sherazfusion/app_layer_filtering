@@ -131,7 +131,7 @@ export default function Home() {
                 onChange={() => setIncludeWebsiteLink(!includeWebsiteLink)}
                 className="h-5 w-5"
               />
-              Include Website Link
+              Include Website Link (link)
             </label>
 
             {/* Toggle for Profile Picture */}
@@ -164,7 +164,7 @@ export default function Home() {
                 onChange={() => setExcludeSexualContent(!excludeSexualContent)}
                 className="h-5 w-5"
               />
-              Exclude Sexual Content (avatar)
+              Exclude Sexual Content ( additional negative keywords)
             </label>
 
             {/* Toggle for Include Private Accounts */}

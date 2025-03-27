@@ -2,8 +2,8 @@ import { MongoClient, Document } from "mongodb";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 // MongoDB Configuration
-const MONGO_URI = "mongodb+srv://sheraz:kM5pxYRQnoVLtyBd@staging-0.whl0dtn.mongodb.net/?retryWrites=true&w=majority&appName=staging-0";
-const DATABASE_NAME = "test";
+const MONGO_URI = "mongodb+srv://sheraz:dnx97sa@cluster0leadsdatabase.kdcntdq.mongodb.net/";
+const DATABASE_NAME = "RawLeads";
 const COLLECTION_NAME = "RawLeads";
 
 // Define the type for each document in the results
